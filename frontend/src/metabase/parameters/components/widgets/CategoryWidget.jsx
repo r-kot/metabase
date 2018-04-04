@@ -4,6 +4,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
+import cx from "classnames";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 import { getHumanReadableValue } from "metabase/lib/query/field";
@@ -100,10 +101,12 @@ export default class CategoryWidget extends Component {
         <div className="p1">
           <button
             data-ui-tag="add-category-filter"
-            className="Button Button--purple full"
+            className={cx("Button Button--purple full", {
+              disabled: !this.isValid(),
+            })}
             onClick={() => this.commitValues(this.state.selectedValues)}
           >
-            {t`Done`}
+            {!this.props.filter ? t`Add filter` : t`Update filter`}
           </button>
         </div>
       </div>
