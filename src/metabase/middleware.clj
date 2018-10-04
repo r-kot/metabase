@@ -15,8 +15,9 @@
              [session :refer [Session]]
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator
            java.sql.SQLException))
@@ -385,18 +386,18 @@
   "Convert an exception from an API endpoint into an appropriate HTTP response."
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code)
+        other-info                      (dissoc info :status-code :schema)
         message                         (.getMessage e)
         body                            (cond
                                           ;; Exceptions that include a status code *and* other info are things like
                                           ;; Field validation exceptions. Return those as is
                                           (and status-code
                                                (seq other-info))
-                                          other-info
+                                          (ui18n/localized-strings->strings other-info)
                                           ;; If status code was specified but other data wasn't, it's something like a
                                           ;; 404. Return message as the (plain-text) body.
                                           status-code
-                                          message
+                                          (str message)
                                           ;; Otherwise it's a 500. Return a body that includes exception & filtered
                                           ;; stacktrace for debugging purposes
                                           :else
@@ -410,7 +411,10 @@
                                                       (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                                  #"\s*\n\s*")}))))]
     {:status  (or status-code 500)
-     :headers (security-headers)
+     :headers (cond-> (security-headers)
+                (or (string? body)
+                    (ui18n/localized-string? body))
+                (assoc "Content-Type" "text/plain"))
      :body    body}))
 
 (defn catch-api-exceptions
